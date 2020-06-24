@@ -1,0 +1,26 @@
+FROM amazonlinux:2
+ENV SPLUNK_GROUP splunk
+ENV SPLUNK_USER splunk
+ENV SPLUNK_BACKUP_DEFAULT_ETC /var/opt/splunk
+ENV SPLUNK_INDEX test
+ENV FORWARD_HOSTNAME InstanceId
+RUN yum install -y tar && \
+    yum update -y && yum -y install shadow-utils.x86_64 xmlstarlet saxon augeas bsdtar unzip wget && \
+    groupadd --system ${SPLUNK_GROUP} && \
+    useradd --system -g ${SPLUNK_GROUP} ${SPLUNK_USER} && \
+#    yum clean all
+# add splunk:splunk user
+#RUN addgroup --system ${SPLUNK_GROUP} \
+#    && adduser --system --ingroup ${SPLUNK_GROUP} ${SPLUNK_USER}
+
+# Download official Splunk release, verify checksum and unzip in /opt/splunk
+# Also backup etc folder, so it will be later copied to the linked volume
+#RUN yum add sudo curl\
+wget -O splunkforwarder-6.0.2-196940-linux-2.6-x86_64.rpm 'http://www.splunk.com/page/download_track?file=6.0.2/universalforwarder/linux/splunkforwarder-6.0.2-196940-linux-2.6-x86_64.rpm&ac=adwords-syslog&wget=true&name=wget&platform=Linux&architecture=x86_64&version=6.0.2&product=splunk&typed=release' && \
+rpm -ihv splunkforwarder-6.0.2-196940-linux-2.6-x86_64.rpm
+
+RUN /opt/splunkforwarder/bin/splunk start
+
+
+#ENTRYPOINT ["/sbin/entrypoint.sh"]
+CMD ["/bin/bash"]

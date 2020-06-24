@@ -1,0 +1,52 @@
+FROM amazonlinux:2
+ENV SPLUNK_PRODUCT universalforwarder
+ENV SPLUNK_VERSION 6.3.1
+ENV SPLUNK_BUILD f3e41e4b37b2
+ENV SPLUNK_FILENAME splunkforwarder-${SPLUNK_VERSION}-${SPLUNK_BUILD}-Linux-x86_64.tgz
+ENV SPLUNK_SERVER_HOST testapp:9997
+ENV SPLUNK_HOME /opt/splunk
+ENV SPLUNK_GROUP splunk
+ENV SPLUNK_USER splunk
+ENV SPLUNK_BACKUP_DEFAULT_ETC /var/opt/splunk
+ENV SPLUNK_INDEX test
+ENV FORWARD_HOSTNAME InstanceId
+RUN yum install -y tar && \
+    yum update -y && yum -y install shadow-utils.x86_64 xmlstarlet saxon augeas bsdtar unzip && \
+    groupadd --system ${SPLUNK_GROUP} && \
+    useradd --system -g ${SPLUNK_GROUP} ${SPLUNK_USER} && \
+    yum clean all
+# add splunk:splunk user
+#RUN addgroup --system ${SPLUNK_GROUP} \
+#    && adduser --system --ingroup ${SPLUNK_GROUP} ${SPLUNK_USER}
+
+# Download official Splunk release, verify checksum and unzip in /opt/splunk
+# Also backup etc folder, so it will be later copied to the linked volume
+#RUN yum add sudo curl\
+RUN  mkdir -p ${SPLUNK_HOME} \
+    && curl -o /tmp/${SPLUNK_FILENAME} https://download.splunk.com/products/${SPLUNK_PRODUCT}/releases/${SPLUNK_VERSION}/linux/${SPLUNK_FILENAME} \
+    && curl -o /tmp/${SPLUNK_FILENAME}.md5 https://download.splunk.com/products/${SPLUNK_PRODUCT}/releases/${SPLUNK_VERSION}/linux/${SPLUNK_FILENAME}.md5 \
+    && tar xzf /tmp/${SPLUNK_FILENAME} --strip 1 -C ${SPLUNK_HOME} \
+    && rm /tmp/${SPLUNK_FILENAME} \
+    && rm /tmp/${SPLUNK_FILENAME}.md5 \
+    && mkdir -p /var/opt/splunk \
+    && cp -R ${SPLUNK_HOME}/etc ${SPLUNK_BACKUP_DEFAULT_ETC} \
+    && rm -fR ${SPLUNK_HOME}/etc \
+    && chown -R ${SPLUNK_USER}:${SPLUNK_GROUP} ${SPLUNK_HOME} \
+    && chown -R ${SPLUNK_USER}:${SPLUNK_GROUP} ${SPLUNK_BACKUP_DEFAULT_ETC} \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ./config /tmp/splunk
+
+COPY patch-entrypoint.sh /sbin/entrypoint.sh
+RUN chmod +x /sbin/entrypoint.sh
+
+# Ports Splunk Daemon, Network Input, HTTP Event Collector
+EXPOSE 8089/tcp 1514 8088/tcp
+
+WORKDIR /opt/splunk
+
+# Configurations folder, var folder for everyting (indexes, logs, kvstore)
+VOLUME [ "/opt/splunk/etc", "/opt/splunk/var" ]
+
+ENTRYPOINT ["/sbin/entrypoint.sh"]
+CMD ["start-service"]

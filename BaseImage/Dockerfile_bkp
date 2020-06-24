@@ -1,0 +1,10 @@
+FROM amazonlinux:2.0.20200406.0
+RUN yum install -y tar
+COPY splunkforwarder-6.0.2-196940-linux-2.6-x86_64.rpm /tmp
+RUN yum -y localinstall /tmp/splunkforwarder-6.0.2-196940-linux-2.6-x86_64.rpm && \
+	export SPLUNK_HOME="/opt/splunkforwarder" && \
+	export PATH=$PATH:$SPLUNK_HOME/bin && \
+	exec bash 
+RUN /opt/splunkforwarder/bin/splunk start -accept-license
+	#/opt/splunkforwarder/bin/splunk restart
+CMD ["/bin/bash"]

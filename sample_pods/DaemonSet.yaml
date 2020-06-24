@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: worker-monitor
+spec:
+  selector:
+    matchLabels:
+      app: worker-monitor
+  template:
+    metadata:
+      labels:
+        app: worker-monitor
+    spec:
+      nodeSelector:
+        type: worker
+      containers:
+      - name: main
+        image: nginx
